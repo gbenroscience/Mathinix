@@ -1,3 +1,8 @@
 com\github\gbenroscience\mathinix\App.class
-com\github\gbenroscience\mathinix\SystemInfo.class
+com\github\gbenroscience\mathinix\FXCommandLineArea.class
+com\github\gbenroscience\mathinix\ParserMode.class
 module-info.class
+com\github\gbenroscience\mathinix\GraphDisplay.class
+com\github\gbenroscience\mathinix\App$1.class
+com\github\gbenroscience\mathinix\SystemInfo.class
+com\github\gbenroscience\mathinix\FXCommandLineArea$CommandAction.class

@@ -91,3 +91,47 @@
     -fx-text-fill: #A0A0A0;
     -fx-font-size: 11px;
 }
+.result-display {
+    -fx-control-inner-background: rgba(0, 0, 0, 0.4);
+    -fx-background-color: transparent;
+    -fx-text-fill: #00FF95; /* Emerand/Neon Green for results */
+    -fx-font-family: "Consolas", monospace;
+    -fx-border-color: rgba(0, 212, 255, 0.3);
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 5;
+}
+
+/* Remove the default scrollbar look to keep it sleek */
+.result-display .scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.command-line-area {
+    -fx-control-inner-background: #0a0e14; /* Deep dark blue/black */
+    -fx-text-fill: #00d4ff;                /* Neon Cyan */
+    -fx-font-family: "JetBrains Mono", "Consolas", monospace;
+    -fx-font-size: 14px;
+    -fx-background-color: transparent;
+    -fx-border-color: #00d4ff33;           /* Faint glow border */
+    -fx-border-radius: 5;
+}
+
+/* Hide the scrollbar thumb for that clean look */
+.command-line-area .scroll-bar:vertical {
+    -fx-opacity: 0.3;
+}
+.mode-badge {
+    -fx-background-color: rgba(0, 212, 255, 0.1);
+    -fx-text-fill: #00D4FF;
+    -fx-border-color: #00D4FF;
+    -fx-border-width: 1;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-padding: 2 8;
+    -fx-font-family: "Consolas", monospace;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    /* Subtle neon glow */
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 212, 255, 0.6), 10, 0, 0, 0);
+}

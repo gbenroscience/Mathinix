@@ -5,9 +5,12 @@ package com.github.gbenroscience.mathinix;
  */
 import com.github.gbenroscience.parser.MathExpression;
 import com.github.gbenroscience.parser.STRING;
+import com.github.gbenroscience.parser.methods.Method;
 import com.github.gbenroscience.parser.turbo.tools.FastCompositeExpression;
 import com.github.gbenroscience.parser.turbo.tools.MatrixTurboEvaluator;
 import com.github.gbenroscience.parser.turbo.tools.TurboEvaluatorFactory;
+import com.github.gbenroscience.util.FunctionManager;
+import com.github.gbenroscience.util.VariableManager;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,6 +31,8 @@ import javafx.geometry.Rectangle2D;
 import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.binding.Bindings;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 
 public class App extends Application {
 
@@ -46,6 +51,18 @@ public class App extends Application {
 
     GraphDisplay visualizer;
 
+    // Tables
+    private TableView<String[]> varTable;
+    private TableView<String[]> funcTable;
+    private TableView<String[]> constTable;
+    private TableView<String[]> methodsTable;
+
+// Data Lists (The "Source of Truth" for the UI)
+    private final ObservableList<String[]> varData = FXCollections.observableArrayList();
+    private final ObservableList<String[]> funcData = FXCollections.observableArrayList();
+    private final ObservableList<String[]> constData = FXCollections.observableArrayList();
+    private final ObservableList<String[]> methodsData = FXCollections.observableArrayList();
+
     public static void main(String[] args) {
         launch(args);
     }
@@ -60,22 +77,6 @@ public class App extends Application {
         root.getStylesheets().add(getClass().getResource("/static/css/style.css").toExternalForm());
 
         // --- TOP: Menu Bar (Draggable Area) ---
-        HBox topBar = createTopBar(stage);
-        // Inside your start() method or a controller
-        topBar.setOnMouseClicked(event -> {
-            if (event.getClickCount() == 2) { // Double-click to toggle
-                stage.setMaximized(!stage.isMaximized());
-
-                if (stage.isMaximized()) {
-                    // Optional: Adjust the root's border radius when fullscreen
-                    root.setStyle("-fx-background-radius: 0; -fx-border-radius: 0;");
-                } else {
-                    root.setStyle("-fx-background-radius: 20; -fx-border-radius: 20;");
-                }
-            }
-        });
-        root.setTop(topBar);
-
         // In your start() method:
 // 1. Bind the Stage Title to the mode
         stage.titleProperty()
@@ -86,8 +87,16 @@ public class App extends Application {
         modeIndicator.getStyleClass().add("mode-badge");
         modeIndicator.textProperty().bind(Bindings.createStringBinding(
                 () -> currentMode.get().getDisplayName().toUpperCase(), currentMode));
-// Add modeIndicator to your TopBar or Status Bar
-        topBar.getChildren().add(0, modeIndicator);
+
+        // --- TOP: The Merged Top Bar ---
+        StackPane topBar = createTopBar(stage, modeIndicator, root);
+        root.setTop(topBar);
+
+        // Initialize the tables with their respective lists
+        this.varTable = createLiveTable(new String[]{"NAME", "VALUE", "TYPE"}, varData);
+        this.funcTable = createLiveTable(new String[]{"FUNCTION", "DEF"}, funcData);
+        this.constTable = createLiveTable(new String[]{"SYMBOL", "VALUE"}, constData);
+        this.methodsTable = createLiveTable(new String[]{"METHOD", "SYNTAX"}, methodsData);
 
         // --- LEFT: Variables & Functions ---
         VBox leftPanel = new VBox(15);
@@ -95,9 +104,9 @@ public class App extends Application {
         leftPanel.setPrefWidth(280);
         leftPanel.getChildren().addAll(
                 createSectionHeader("CREATED VARIABLES"),
-                createVariablesTable(),
+                this.varTable,
                 createSectionHeader("USER DEFINED FUNCTIONS"),
-                createFunctionsTable()
+                this.funcTable
         );
         root.setLeft(leftPanel);
 
@@ -116,15 +125,21 @@ public class App extends Application {
         VBox.setVgrow(cli, Priority.ALWAYS);
         root.setCenter(centerPanel);
 
+// Load initial data (pi, e, etc.)
+        refreshTables();
+
+// Load the static data
+        loadInbuiltMethods();
+
         // --- RIGHT: Methods & Constants ---
         VBox rightPanel = new VBox(15);
         rightPanel.setPadding(new Insets(10));
         rightPanel.setPrefWidth(280);
         rightPanel.getChildren().addAll(
                 createSectionHeader("INBUILT METHODS"),
-                createMethodsTable(),
+                this.methodsTable,
                 createSectionHeader("CONSTANTS"),
-                createConstantsTable()
+                this.constTable
         );
         root.setRight(rightPanel);
 
@@ -271,16 +286,17 @@ public class App extends Application {
                 }
                 // Echo back the command as an example
                 cli.printOutput("Executing: " + cmd);
-                  if (cmd.startsWith("plot")) {
-                        openGraph(cmd);
-                        return;
-                    }
+                if (cmd.startsWith("plot")) {
+                    openGraph(cmd);
+                    return;
+                }
                 MathExpression me = new MathExpression(cmd);
                 if (mode == MODE_STD) {
                     String soln = me.solve();
                     cli.printOutput(soln);
+                    //  TRIGGER THE LIVE UPDATE
+                    refreshTables();
                 } else {
-                  
                     try {
                         FastCompositeExpression fce = null;
                         if (mode == MODE_TURBO_ARR) {
@@ -293,6 +309,8 @@ public class App extends Application {
 
                         MathExpression.EvalResult soln = fce.apply(me.getExecutionFrame());
                         cli.printOutput(soln.toString());
+                        // TRIGGER THE LIVE UPDATE
+                        refreshTables();
                     } catch (Throwable ex) {
                         System.getLogger(App.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
                     }
@@ -321,7 +339,14 @@ public class App extends Application {
         }
         visualizer.show();
 
-        visualizer.updateGraph(cmd);
+        if (cmd != null && !cmd.isEmpty()) {
+            if (!cmd.equals("plot")) {
+                visualizer.updateGraph(cmd);
+            } else if (cmd.trim().startsWith("plot(") && cmd.endsWith(")")) {
+                cmd = cmd.substring(5, cmd.length() - 1);
+                visualizer.updateGraph(cmd);
+            }
+        }
 
         return visualizer;
     }
@@ -339,67 +364,67 @@ public class App extends Application {
         return label;
     }
 
-    private HBox createTopBar(Stage stage) {
-        HBox topBar = new HBox(15);
-        topBar.setPadding(new Insets(15, 20, 10, 20));
-        Label title = new Label("FILE   EDIT   VIEW   SESSION   HELP");
-        title.setStyle("-fx-text-fill: #A0A0A0; -fx-font-size: 12px;");
+    private StackPane createTopBar(Stage stage, Label modeIndicator, BorderPane root) {
+        StackPane topBar = new StackPane();
+        topBar.setPadding(new Insets(10, 20, 10, 20));
+        topBar.getStyleClass().add("top-bar"); // For CSS styling
 
-        Pane spacer = new Pane();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
+        // 1. LEFT SIDE: Mode Badge + Menu Items
+        Label menuLabel = new Label("FILE   EDIT   VIEW   SESSION   HELP");
+        menuLabel.setStyle("-fx-text-fill: #A0A0A0; -fx-font-size: 11px; -fx-font-family: 'Consolas';");
 
-        // Exit button
+        HBox leftArea = new HBox(20, modeIndicator, menuLabel);
+        leftArea.setAlignment(Pos.CENTER_LEFT);
+        leftArea.setPickOnBounds(false); // Allows drag events to pass through to StackPane
+
+        // 2. CENTER: Branding
+        Label appTitle = new Label("MATHINIX");
+        appTitle.getStyleClass().add("app-title");
+        StackPane.setAlignment(appTitle, Pos.CENTER);
+
+        // 3. RIGHT SIDE: Close Button
         Button closeBtn = new Button("X");
-        closeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #ff4444; -fx-font-weight: bold;");
+        closeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: #ff4444; -fx-font-weight: bold; -fx-cursor: hand;");
         closeBtn.setOnAction(e -> System.exit(0));
 
-        topBar.getChildren().addAll(title, spacer, closeBtn);
+        HBox rightArea = new HBox(closeBtn);
+        rightArea.setAlignment(Pos.CENTER_RIGHT);
+        rightArea.setPickOnBounds(false);
 
-        // Make window draggable
+        // Add everything to the StackPane
+        topBar.getChildren().addAll(appTitle, leftArea, rightArea);
+
+        // --- WINDOW LOGIC ---
+        // Double-click to Maximize
+        topBar.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                stage.setMaximized(!stage.isMaximized());
+                if (stage.isMaximized()) {
+                    root.setStyle("-fx-background-radius: 0; -fx-border-radius: 0;");
+                } else {
+                    root.setStyle("-fx-background-radius: 20; -fx-border-radius: 20;");
+                }
+            }
+        });
+
+        // Draggable Logic
         topBar.setOnMousePressed(event -> {
             xOffset = event.getSceneX();
             yOffset = event.getSceneY();
         });
         topBar.setOnMouseDragged(event -> {
-            stage.setX(event.getScreenX() - xOffset);
-            stage.setY(event.getScreenY() - yOffset);
+            if (!stage.isMaximized()) { // Only drag if not maximized
+                stage.setX(event.getScreenX() - xOffset);
+                stage.setY(event.getScreenY() - yOffset);
+            }
         });
 
         return topBar;
     }
 
     // --- Dummy Data Tables ---
-    private TableView<String[]> createVariablesTable() {
-        return createSimpleTable(
-                new String[]{"NAME", "VALUE", "TYPE"},
-                new String[][]{{"x", "3.5", "(scalar)"}, {"y", "[1, 2, 3]", "(vector)"}, {"A", "[[...]]", "(matrix)"}}
-        );
-    }
-
-    private TableView<String[]> createFunctionsTable() {
-        return createSimpleTable(
-                new String[]{"FUNCTION", "DEF"},
-                new String[][]{{"sq(n)", "n*n"}, {"area_circ(r)", "pi * r^2"}}
-        );
-    }
-
-    private TableView<String[]> createMethodsTable() {
-        return createSimpleTable(
-                new String[]{"METHOD", "SYNTAX"},
-                new String[][]{{"integrate", "(expr, var)"}, {"differentiate", "(expr, var)"}, {"plot", "(expr, range)"}}
-        );
-    }
-
-    private TableView<String[]> createConstantsTable() {
-        return createSimpleTable(
-                new String[]{"SYMBOL", "VALUE"},
-                new String[][]{{"π", "3.14159"}, {"e", "2.71828"}, {"c", "299792458"}}
-        );
-    }
-
-    // Utility to quickly spin up a TableView with basic string arrays
-    private TableView<String[]> createSimpleTable(String[] headers, String[][] data) {
-        TableView<String[]> table = new TableView<>();
+    private TableView<String[]> createLiveTable(String[] headers, ObservableList<String[]> dataList) {
+        TableView<String[]> table = new TableView<>(dataList);
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         for (int i = 0; i < headers.length; i++) {
@@ -409,9 +434,52 @@ public class App extends Application {
             table.getColumns().add(col);
         }
 
-        table.getItems().addAll(data);
-        VBox.setVgrow(table, Priority.ALWAYS); // Let tables stretch to fit space
+        VBox.setVgrow(table, Priority.ALWAYS);
         return table;
+    }
+
+    /**
+     * Refreshes all tables by pulling the latest data from the VariableManager
+     * and FunctionManager.
+     */
+    public void refreshTables() {
+        // 1. Sync Variables & Constants
+        varData.clear();
+        constData.clear();
+
+        VariableManager.VARIABLES.forEach((name, var) -> {
+            String value = String.valueOf(var.getValue());
+            String type = var.getType().toString(); // e.g., SCALAR, VECTOR, MATRIX
+
+            if (var.isConstant()) {
+                constData.add(new String[]{name, value});
+            } else {
+                varData.add(new String[]{name, value, type});
+            }
+        });
+
+        // 2. Sync Custom Functions
+        funcData.clear();
+        FunctionManager.FUNCTIONS.forEach((name, func) -> {
+            // Assuming func.toString() or similar gives the definition like "n*n"
+            funcData.add(new String[]{name, func.isMatrix() ? func.getMatrix().toString() : func.getMathExpression().getExpression()});
+        });
+    }
+
+    /**
+     * Loads the static inbuilt methods from the ParserNG library. This only
+     * needs to be called once during startup.
+     */
+    private void loadInbuiltMethods() {
+        methodsData.clear();
+        String[] inbuilt = Method.getAllFunctions();
+
+        for (String name : inbuilt) {
+            // We'll place the name in the first column. 
+            // For the syntax column, we can provide a generic "func(...)" 
+            // or a specific signature if your library provides one.
+            methodsData.add(new String[]{name, "arg..."});
+        }
     }
 }
 

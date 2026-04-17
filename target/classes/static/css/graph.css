@@ -1,0 +1,121 @@
+/**GraphDisplay*/
+.sidebar-glass, .inspector-glass {
+    -fx-background-color: rgba(20, 20, 20, 0.6);
+    -fx-border-color: rgba(255, 255, 255, 0.1);
+    -fx-border-width: 0 1 0 0; /* Right border for sidebar */
+}
+
+.inspector-glass { -fx-border-width: 0 0 0 1; } /* Left border for inspector */
+
+.plot-btn {
+    -fx-background-color: #00D4FF;
+    -fx-text-fill: black;
+    -fx-font-weight: bold;
+    -fx-background-radius: 5;
+}
+
+.plot-btn:hover { -fx-background-color: #00A3C4; }
+
+.tab-pane .tab-header-area .tab-skeleton { -fx-display: none; }
+.tab { -fx-background-color: transparent; }
+.tab:selected { -fx-border-color: #00D4FF; -fx-border-width: 0 0 2 0; }
+.root-pane {
+    -fx-background-color: rgba(15, 15, 15, 0.85);
+    -fx-background-radius: 20;
+    -fx-border-color: rgba(0, 212, 255, 0.3);
+    -fx-border-width: 1;
+    -fx-border-radius: 20;
+}
+
+/* Custom styling for the checkboxes in the Inspector */
+.check-box {
+    -fx-text-fill: #A0A0A0;
+    -fx-font-family: "Consolas";
+    -fx-font-size: 11px;
+    -fx-padding: 5 0;
+}
+
+.check-box:hover {
+    -fx-text-fill: #00D4FF;
+}
+
+/* Styling the actual box part */
+.check-box .box {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-border-color: rgba(255, 255, 255, 0.2);
+    -fx-border-radius: 2;
+}
+
+.check-box:selected .box {
+    -fx-background-color: #00D4FF;
+    -fx-border-color: #00D4FF;
+    /* Neon glow when checked */
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 212, 255, 0.5), 5, 0, 0, 0);
+}
+
+.check-box:selected .mark {
+    -fx-background-color: black; /* The checkmark itself */
+}
+
+
+
+/*Color chooser*/
+/* The main container background */
+.root-pane {
+    -fx-background-color: transparent;
+}
+
+/* Sidebar with glass-morphism effect */
+.sidebar-glass, .inspector-glass {
+    -fx-background-color: rgba(20, 20, 20, 0.7);
+    -fx-background-radius: 15;
+    -fx-border-color: rgba(255, 255, 255, 0.1);
+    -fx-border-width: 1;
+    -fx-border-radius: 15;
+    -fx-backdrop-filter: blur(10px); /* Note: Requires specific JFX versions/setups, or use a StackPane stack */
+}
+
+/* Main Plot Button (Neon Green/Cyan vibe) */
+.plot-btn {
+    -fx-background-color: #00ffcc;
+    -fx-text-fill: #050505;
+    -fx-font-weight: bold;
+    -fx-background-radius: 5;
+    -fx-cursor: hand;
+    -fx-padding: 8 15;
+}
+
+.plot-btn:hover {
+    -fx-background-color: #33ffdd;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 255, 204, 0.6), 10, 0, 0, 0);
+}
+
+/* Secondary Action Buttons (Save, Print, Pick Color) */
+.action-btn {
+    -fx-background-color: #333333;
+    -fx-text-fill: white;
+    -fx-border-color: #555555;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+}
+
+.action-btn:hover {
+    -fx-background-color: #444444;
+}
+
+.color-picker {
+    -fx-background-color: #222222;
+    -fx-color-label-visible: false; /* Hides the text, shows only the color box */
+}
+
+.tab-pane .tab-header-background {
+    -fx-background-color: transparent;
+}
+
+.tab {
+    -fx-background-color: #111111;
+}
+
+.tab:selected {
+    -fx-background-color: #00ffcc;
+}

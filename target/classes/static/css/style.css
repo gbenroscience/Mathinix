@@ -135,3 +135,20 @@
     /* Subtle neon glow */
     -fx-effect: dropshadow(three-pass-box, rgba(0, 212, 255, 0.6), 10, 0, 0, 0);
 }
+.app-title {
+    -fx-font-family: "Segoe UI Semibold", "Verdana", sans-serif;
+    -fx-font-size: 18px;
+    -fx-text-fill: #FFFFFF;
+    -fx-letter-spacing: 5px; /* Adds that premium tech feel */
+    -fx-font-weight: bold;
+    
+    /* Subtle neon white glow */
+    -fx-effect: dropshadow(three-pass-box, rgba(255, 255, 255, 0.4), 15, 0, 0, 0);
+}
+
+/* Ensure the topBar has a slight divider */
+.top-bar {
+    -fx-border-color: rgba(0, 212, 255, 0.2);
+    -fx-border-width: 0 0 1 0; /* Bottom border only */
+}
+

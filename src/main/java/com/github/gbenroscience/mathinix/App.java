@@ -5,6 +5,7 @@ package com.github.gbenroscience.mathinix;
  */
 import com.github.gbenroscience.parser.MathExpression;
 import com.github.gbenroscience.parser.STRING;
+import com.github.gbenroscience.parser.Variable;
 import com.github.gbenroscience.parser.methods.Method;
 import com.github.gbenroscience.parser.turbo.tools.FastCompositeExpression;
 import com.github.gbenroscience.parser.turbo.tools.MatrixTurboEvaluator;
@@ -69,6 +70,10 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) {
+
+        var javaVersion = SystemInfo.javaVersion();
+        var javafxVersion = SystemInfo.javafxVersion();
+        System.out.println("Java Version: " + javaVersion + "\nJavaFX Version: " + javafxVersion);
         // Remove standard OS window borders
         stage.initStyle(StageStyle.TRANSPARENT);
 
@@ -219,7 +224,64 @@ public class App extends Application {
                     sb.append("mode=turbo-mat").append("\n");
                     sb.append("mode=turbo-matrix").append("\n");
                     sb.append("mode=3").append("\n\n");
+                    sb.append("Use `wipe` to clear all stored functions and variables\n");
+                    sb.append("Use `wipe-funcs` to clear all stored functions\n");
+                    sb.append("Use `wipe-vars` to clear all stored variables\n");
+                    sb.append("Use `wipe-var:varName` e.g. wipe-var:a1 to delete the specified variable e.g. a1\n");
+                    sb.append("Use `wipe-func:funcName` e.g. wipe-func:f to delete the specified function e.g. f\n");
+
                     cli.printOutput(sb.toString());
+                    return;
+                }
+
+                if (cmd.equals("wipe")) {
+                    int sz = FunctionManager.FUNCTIONS.size();
+                    FunctionManager.clear();
+                    sz = sz - FunctionManager.FUNCTIONS.size();
+
+                    int sz1 = VariableManager.VARIABLES.size();
+                    VariableManager.clearVariables();
+                    sz1 = sz1 - VariableManager.VARIABLES.size();
+                    cli.printOutput("All variables(" + sz1 + " of them) and functions(" + sz + " of them) cleared from memory");
+                    refreshTables();
+                    return;
+                }
+                if (cmd.equals("wipe-vars")) {
+                    int sz = VariableManager.VARIABLES.size();
+                    VariableManager.clearVariables();
+                    sz = sz - VariableManager.VARIABLES.size();
+                    cli.printOutput(sz + " variables cleared");
+                    refreshTables();
+                    return;
+                }
+                if (cmd.equals("wipe-funcs")) {
+                    int sz = FunctionManager.FUNCTIONS.size();
+                    FunctionManager.clear();
+                    sz = sz - FunctionManager.FUNCTIONS.size();
+                    cli.printOutput(sz + " functions cleared");
+                    refreshTables();
+                    return;
+                }
+                if (cmd.startsWith("wipe-var:")) {
+                    String target = cmd.substring(cmd.indexOf(":") + 1);
+                    if (Variable.isVariableString(target.trim())) {
+                        VariableManager.delete(target);
+                        cli.printOutput("Variable " + target + " deleted");
+                    } else {
+                        cli.printOutput("Invalid Variable `" + target + "` specified");
+                    }
+                    refreshTables();
+                    return;
+                }
+                if (cmd.equals("wipe-func:")) {
+                    String target = cmd.substring(cmd.indexOf(":") + 1);
+                    if (Variable.isVariableString(target.trim())) {
+                        FunctionManager.delete(target);
+                        cli.printOutput("Function " + target + " deleted");
+                    } else {
+                        cli.printOutput("Invalid Function `" + target + "` specified");
+                    }
+                    refreshTables();
                     return;
                 }
 

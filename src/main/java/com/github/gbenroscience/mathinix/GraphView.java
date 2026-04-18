@@ -207,7 +207,6 @@ public class GraphView implements AbstractView {
     }
 
     public void setFunction(String function) {
-        System.out.println("function: " + function);
         this.function = function;
         grid.setFunction(function);
         grid.setRefreshingIndices(true);

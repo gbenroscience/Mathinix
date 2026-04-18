@@ -6,6 +6,7 @@ import com.github.gbenroscience.parser.turbo.tools.FastCompositeExpression;
 import com.github.gbenroscience.parser.turbo.tools.ScalarTurboEvaluator;
 import java.awt.Dimension;
 import java.awt.Toolkit;
+import java.util.List;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.*;
 import javafx.geometry.Insets;
@@ -27,6 +28,9 @@ import org.jzy3d.maths.Range;
 import org.jzy3d.plot3d.builder.Builder;
 import org.jzy3d.plot3d.builder.Mapper;
 import org.jzy3d.plot3d.builder.concrete.OrthonormalGrid;
+import org.jzy3d.plot3d.primitives.AbstractDrawable;
+import org.jzy3d.plot3d.primitives.Polygon;
+import org.jzy3d.plot3d.primitives.Point;
 import org.jzy3d.plot3d.primitives.Shape;
 import org.jzy3d.plot3d.rendering.canvas.Quality;
 import org.jzy3d.plot3d.rendering.view.modes.ViewBoundMode;
@@ -36,6 +40,8 @@ public class GraphDisplay {
     private Stage stage;
     private BorderPane root;
     private StackPane canvasArea;
+    private Node sidebar;   // Reference to hide/show
+    private Node inspector; // Reference to hide/show
 
     // 2D components
     private Canvas canvas;
@@ -51,6 +57,7 @@ public class GraphDisplay {
     // === JZY3D FIELDS ===
     private JavaFXChartFactory factory;
     private AWTChart chart;
+    private Shape currentSurface;
 
     private double zoomLevel = 1.0;
     private double offsetX = 0;
@@ -66,9 +73,9 @@ public class GraphDisplay {
         stage.initStyle(StageStyle.TRANSPARENT);
         root = new BorderPane();
         Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
-        
-        double decimal = 0.9;
-        root.setPrefSize(d.getWidth()*decimal, d.getHeight()*decimal);
+
+        double decimal = 0.95; // Slightly larger window
+        root.setPrefSize(d.getWidth() * decimal, d.getHeight() * decimal);
         root.getStylesheets().add(getClass().getResource("/static/css/graph.css").toExternalForm());
         root.getStyleClass().add("root-pane");
 
@@ -84,8 +91,12 @@ public class GraphDisplay {
         canvas.widthProperty().addListener(e -> graphView.repaint());
         canvas.heightProperty().addListener(e -> graphView.repaint());
 
-        root.setLeft(createDataSidebar());
-        root.setRight(createInspector());
+        // Store references for layout switching
+        this.sidebar = createDataSidebar();
+        this.inspector = createInspector();
+
+        root.setLeft(sidebar);
+        root.setRight(inspector);
         root.setCenter(canvasArea);
 
         Scene scene = new Scene(root);
@@ -102,7 +113,6 @@ public class GraphDisplay {
         TabPane tabs = new TabPane();
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        // Cartesian Tab
         VBox cartBox = new VBox(10);
         TableView<String[]> cartTable = createSimpleTable(new String[]{"ID", "FUNCTION"}, cartData);
         TextField fInput = new TextField();
@@ -119,7 +129,6 @@ public class GraphDisplay {
         });
         cartBox.getChildren().addAll(cartTable, fInput, btnPlotF);
 
-        // Geometric Tab
         VBox geoBox = new VBox(10);
         TableView<String[]> geoTable = createSimpleTable(new String[]{"ID", "X-SET", "Y-SET"}, geoData);
         TextField xIn = new TextField();
@@ -212,104 +221,144 @@ public class GraphDisplay {
         Quality quality = Quality.Advanced;
         chart = (AWTChart) factory.newChart(quality, IChartComponentFactory.Toolkit.offscreen);
 
-        chart.getView().setBackgroundColor(org.jzy3d.colors.Color.BLACK);
-        chart.getAxeLayout().setMainColor(org.jzy3d.colors.Color.GREEN);
+        chart.getView().setBackgroundColor(org.jzy3d.colors.Color.WHITE);
+        chart.getAxeLayout().setMainColor(org.jzy3d.colors.Color.GRAY);
         chart.getAxeLayout().setXAxeLabel("X");
         chart.getAxeLayout().setYAxeLabel("Y");
         chart.getAxeLayout().setZAxeLabel("Z");
 
         ImageView imageView = factory.bindImageView(chart);
         imageView.setPreserveRatio(true);
-        imageView.setUserData(chart);
 
+        // Ensure the ImageView expands to its container
+        imageView.fitWidthProperty().bind(canvasArea.widthProperty());
+        imageView.fitHeightProperty().bind(canvasArea.heightProperty());
+
+        imageView.setUserData(chart);
         jzyNode = imageView;
         return imageView;
     }
 
-   
     private void update3DPlot(String expression) {
         if (chart == null) {
-            System.err.println("3D Chart not initialized!");
             return;
         }
 
-        // 1. Extract inner expression
-        if (expression.contains("(") && expression.contains(")")) {
+        if (expression.toLowerCase().startsWith("plot3d(") && expression.endsWith(")")) {
             expression = expression.substring(expression.indexOf("(") + 1, expression.lastIndexOf(")")).trim();
         }
+
         if (expression.contains("@")) {
-            // Regex to remove everything from @ up to the first parenthesis after the variables
             expression = expression.replaceAll("@\\(.*?\\)", "").trim();
         }
-        System.out.println("final expression to evaluate: " + expression);
-// N
+
         try {
             final MathExpression expr = new MathExpression(expression);
             ScalarTurboEvaluator ste = new ScalarTurboEvaluator(expr, false);
             final FastCompositeExpression fce = ste.compile();
-
             final double[] vars = new double[expr.getRegistry().size()];
 
-            org.jzy3d.plot3d.builder.Mapper mapper = new org.jzy3d.plot3d.builder.Mapper() {
-                @Override
-                public double f(double x, double y) {
-                    if (vars.length == 2) {
-                        vars[0] = x;
-                        vars[1] = y;
-                    } else if (vars.length == 1) {
-                        vars[0] = x;
-                    }
-                    return fce.applyScalar(vars);
-                    
-                }
-            };
+            if (currentSurface != null) {
+                updateSurfaceInPlace(fce, vars);
+            } else {
+                buildNewSurface(fce, vars);
+            }
 
-            // 3. Build the surface
-            Range range = new Range(-5, 5);
-            int steps = 80;
-            Shape surface = Builder.buildOrthonormal(new OrthonormalGrid(range, steps), mapper);
-
-            surface.setColorMapper(new ColorMapper(
-                    new ColorMapRainbow(),
-                    surface.getBounds().getZmin(),
-                    surface.getBounds().getZmax(),
-                    new org.jzy3d.colors.Color(1f, 1f, 1f, 0.85f)
-            ));
-
-            surface.setFaceDisplayed(true);
-            surface.setWireframeDisplayed(true);
-            surface.setWireframeColor(org.jzy3d.colors.Color.BLACK);
-
-            // 4. Update the Scene Graph
-            chart.getScene().getGraph().getAll().clear();
-            chart.getScene().getGraph().add(surface);
-
-            // 5. CRITICAL: Update camera and push to JavaFX
-            // Forces the camera to recalculate based on the current scene objects
             chart.getView().updateBounds();
-
-// Optional: ensures the view mode is set to automatically fit content
             chart.getView().setBoundMode(ViewBoundMode.AUTO_FIT);
-            chart.render();              // Draw the AWT buffer
-            chart.getView().shoot();     // Push AWT buffer to JavaFX ImageView
+            chart.render();
+            chart.getView().shoot();
 
         } catch (Throwable e) {
             e.printStackTrace();
         }
     }
 
+    private void updateSurfaceInPlace(FastCompositeExpression fce, double[] vars) {
+        List<AbstractDrawable> drawables = currentSurface.getDrawables();
+        for (AbstractDrawable d : drawables) {
+            if (d instanceof Polygon) {
+                Polygon poly = (Polygon) d;
+                for (Point p : poly.getPoints()) {
+                    if (vars.length == 2) {
+                        vars[0] = p.xyz.x;
+                        vars[1] = p.xyz.y;
+                    } else if (vars.length == 1) {
+                        vars[0] = p.xyz.x;
+                    }
+                    p.xyz.z = (float) fce.applyScalar(vars);
+                }
+                poly.updateBounds();
+            }
+        }
+        currentSurface.updateBounds();
+
+        double zMin = currentSurface.getBounds().getZmin();
+        double zMax = currentSurface.getBounds().getZmax();
+        if (Math.abs(zMax - zMin) < 0.0001) {
+            zMax = zMin + 1.0;
+        }
+
+        currentSurface.setColorMapper(new ColorMapper(
+                new ColorMapRainbow(), zMin, zMax, new org.jzy3d.colors.Color(1f, 1f, 1f, 0.85f)
+        ));
+    }
+
+    private void buildNewSurface(FastCompositeExpression fce, double[] vars) {
+        Mapper mapper = new Mapper() {
+            @Override
+            public double f(double x, double y) {
+                if (vars.length == 2) {
+                    vars[0] = x;
+                    vars[1] = y;
+                } else if (vars.length == 1) {
+                    vars[0] = x;
+                }
+                return fce.applyScalar(vars);
+            }
+        };
+
+        Range range = new Range(-5, 5);
+        int steps = 40;
+        currentSurface = Builder.buildOrthonormal(new OrthonormalGrid(range, steps), mapper);
+
+        currentSurface.setColorMapper(new ColorMapper(
+                new ColorMapRainbow(),
+                currentSurface.getBounds().getZmin(),
+                currentSurface.getBounds().getZmax(),
+                new org.jzy3d.colors.Color(1f, 1f, 1f, 0.85f)
+        ));
+
+        currentSurface.setFaceDisplayed(true);
+        currentSurface.setWireframeDisplayed(true);
+        currentSurface.setWireframeColor(new org.jzy3d.colors.Color(0, 0, 0, 0.15f));
+
+        chart.getScene().getGraph().getAll().clear();
+        chart.getScene().getGraph().add(currentSurface);
+    }
+
     private void switchTo2D(String expression) {
         if (is3DMode) {
+            // Restore UI panels
+            root.setLeft(sidebar);
+            root.setRight(inspector);
+
             canvasArea.getChildren().clear();
             canvasArea.getChildren().add(canvas);
             is3DMode = false;
         }
-        graphView.setFunction(expression);
+        if (expression != null) { 
+                updateCompoundFunction();
+        }
         graphView.repaint();
     }
 
     private void switchTo3D(String expression) {
         if (!is3DMode) {
+            // Remove UI panels to allow full-screen center plot
+            root.setLeft(null);
+            root.setRight(null);
+
             canvasArea.getChildren().clear();
             if (jzyNode == null) {
                 jzyNode = create3DChartNode();
@@ -331,10 +380,24 @@ public class GraphDisplay {
             if (is3D) {
                 switchTo3D(cleanExpr);
             } else {
+                if (cleanExpr.startsWith("plot2d(")) {
+                    if (cleanExpr.endsWith(")")) {
+                        cleanExpr = cleanExpr.substring(cleanExpr.indexOf("(") + 1, cleanExpr.lastIndexOf(")"));
+                    }
+                } else if (cleanExpr.startsWith("plot(")) {
+                    if (cleanExpr.endsWith(")")) {
+                        cleanExpr = cleanExpr.substring(cleanExpr.indexOf("(") + 1, cleanExpr.lastIndexOf(")"));
+                    }
+                } else if (cleanExpr.startsWith("plot2d") || cleanExpr.startsWith("plot")) {
+                    cleanExpr = null;
+                    //just 2d plot command.open page and ignore
+                } 
+                if (cleanExpr != null) {
+                    String id = String.valueOf(cartData.size() + 1);
+                    cartData.add(new String[]{id, cleanExpr});
+                }
                 switchTo2D(cleanExpr);
-                String id = String.valueOf(cartData.size() + 1);
-                cartData.add(new String[]{id, cleanExpr});
-                updateCompoundFunction();
+
             }
         } catch (Exception ex) {
             System.err.println("Math Error: " + ex.getMessage());
@@ -345,10 +408,10 @@ public class GraphDisplay {
         StringBuilder compound = new StringBuilder();
         for (String[] row : geoData) {
             if (row.length >= 3) {
-                String hors = row[1];
-                String vers = row[2];
-                if (hors != null && vers != null && !hors.trim().isEmpty() && !vers.trim().isEmpty()) {
-                    compound.append(hors).append(vers).append(";");
+                String h = row[1];
+                String v = row[2];
+                if (h != null && v != null && !h.trim().isEmpty() && !v.trim().isEmpty()) {
+                    compound.append(h).append(v).append(";");
                 }
             }
         }
@@ -384,10 +447,8 @@ public class GraphDisplay {
 
     private void applyColorToGraph(String target, Color c) {
         GraphColor gc = new GraphColor(
-                (int) (c.getRed() * 255),
-                (int) (c.getGreen() * 255),
-                (int) (c.getBlue() * 255),
-                (int) (c.getOpacity() * 255)
+                (int) (c.getRed() * 255), (int) (c.getGreen() * 255),
+                (int) (c.getBlue() * 255), (int) (c.getOpacity() * 255)
         );
 
         switch (target) {

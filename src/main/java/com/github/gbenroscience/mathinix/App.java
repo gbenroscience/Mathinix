@@ -229,7 +229,13 @@ public class App extends Application {
                     sb.append("Use `wipe-vars` to clear all stored variables\n");
                     sb.append("Use `wipe-var:varName` e.g. wipe-var:a1 to delete the specified variable e.g. a1\n");
                     sb.append("Use `wipe-func:funcName` e.g. wipe-func:f to delete the specified function e.g. f\n");
-
+                    
+                    
+                    sb.append("Use `plot` or `plot2d` command to generate 2d plots e.g plot(y(x)=sin(x)) or plot2d(v(x)=cosh(x)) to generate a 2D plot... the 2D plotter is ParserNG's native plotter\n");
+                    sb.append("Use `plot3d` command to generate 3d plots. e.g plot3d(cosh(x-2*y)) to generate a 3D plot....the 3D plotter is powered by `Jzy3d`\n");
+                    sb.append("For power users, do: plot3d(expression, resolution)... e.g. plot3d(expression, 80).  `resolution` should be between 50 and 120 for modest PCs.\n "
+                            + "This increases the detail of the graph, by using more points from the math engine, but the graph will be less responsive for higher resolution, so beware.");
+                    
                     cli.printOutput(sb.toString());
                     return;
                 }
@@ -244,6 +250,7 @@ public class App extends Application {
                     sz1 = sz1 - VariableManager.VARIABLES.size();
                     cli.printOutput("All variables(" + sz1 + " of them) and functions(" + sz + " of them) cleared from memory");
                     refreshTables();
+                    visualizer.clearGraphData();
                     return;
                 }
                 if (cmd.equals("wipe-vars")) {
@@ -257,6 +264,7 @@ public class App extends Application {
                 if (cmd.equals("wipe-funcs")) {
                     int sz = FunctionManager.FUNCTIONS.size();
                     FunctionManager.clear();
+                    visualizer.clearCartesianGraphData();
                     sz = sz - FunctionManager.FUNCTIONS.size();
                     cli.printOutput(sz + " functions cleared");
                     refreshTables();
@@ -273,10 +281,11 @@ public class App extends Application {
                     refreshTables();
                     return;
                 }
-                if (cmd.equals("wipe-func:")) {
+                if (cmd.startsWith("wipe-func:")) {
                     String target = cmd.substring(cmd.indexOf(":") + 1);
                     if (Variable.isVariableString(target.trim())) {
                         FunctionManager.delete(target);
+                        visualizer.refreshGraphData();
                         cli.printOutput("Function " + target + " deleted");
                     } else {
                         cli.printOutput("Invalid Function `" + target + "` specified");

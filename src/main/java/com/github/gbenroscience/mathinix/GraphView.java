@@ -56,7 +56,7 @@ public class GraphView implements AbstractView {
         this.context.setStrokeWidth(1);
 
         this.grid = new Grid(function, showGridLines, labelAxis, gridSize, gridColor, majorAxesColor, tickColor, plotColor, majorTickLength,
-                minorTickLength, lowerXLimit, upperXLimit, xStep, yStep, font, false, this);
+                minorTickLength, lowerXLimit, upperXLimit, xStep, yStep, font, true, this);
 
         // 2. Set Grid origin to the physical center of the canvas
         double centerX = canvas.getWidth() / 2;
@@ -222,6 +222,12 @@ public class GraphView implements AbstractView {
     public void setShowGridLines(boolean showGridLines) {
         this.showGridLines = showGridLines;
         grid.setShowGridLines(showGridLines);
+        repaint();
+    }
+    
+    
+    public void setAutoScaleOn(boolean autoScale) {
+        this.grid.setAutoScaleOn(autoScale);
         repaint();
     }
 

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-    <actions>
+<actions>
         <action>
             <actionName>run</actionName>
             <packagings>
@@ -36,5 +36,22 @@
                 <goal>compile</goal>
                 <goal>javafx:jlink</goal>
             </goals>
+        </action>
+        <action>
+            <actionName>run.single.main</actionName>
+            <packagings>
+                <packaging>*</packaging>
+            </packagings>
+            <goals>
+                <goal>clean</goal>
+                <goal>javafx:run</goal>
+            </goals>
+            <properties>
+                <exec.vmArgs></exec.vmArgs>
+                <exec.args>${exec.vmArgs} -classpath %classpath ${exec.mainClass} ${exec.appArgs}</exec.args>
+                <exec.executable>java</exec.executable>
+                <exec.mainClass>${packageClassName}</exec.mainClass>
+                <exec.classpathScope>${classPathScope}</exec.classpathScope>
+            </properties>
         </action>
     </actions>

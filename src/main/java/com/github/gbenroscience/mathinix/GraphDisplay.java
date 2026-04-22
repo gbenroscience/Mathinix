@@ -106,7 +106,7 @@ public class GraphDisplay {
         private final int steps;
 
         // One compiled instance per thread — eliminates O(steps) compiles
-        private static final ThreadLocal<FastCompositeExpression> THREAD_LOCAL_FC = new ThreadLocal<>();
+        private final ThreadLocal<FastCompositeExpression> THREAD_LOCAL_FC = new ThreadLocal<>();
 
         public ParallelMapper(FastCompositeExpression fce, Range range, int steps, int varsCount) {
             this.steps = steps;
@@ -239,9 +239,12 @@ public class GraphDisplay {
             };
 
             final double[] vars = new double[expr.getRegistry().size()];
+            int xIdx = expr.getRegistry().getSlot("x");
+            int yIdx = expr.getRegistry().getSlot("y");
+            
 
             if (currentSurface != null) {
-                updateSurfaceInPlace(fce, vars);
+                updateSurfaceInPlace(fce, vars, xIdx, yIdx);
             } else {
                 buildNewSurface(fce, vars);
             }
@@ -291,17 +294,18 @@ public class GraphDisplay {
         chart.getView().getCamera().setTarget(new Coord3d(0, 0, 1));
     }
 
-    private void updateSurfaceInPlace(FastCompositeExpression fce, double[] vars) {
+    private void updateSurfaceInPlace(FastCompositeExpression fce, double[] vars, int xIdx, int yIdx) {
         List<AbstractDrawable> drawables = currentSurface.getDrawables();
         for (AbstractDrawable d : drawables) {
             if (d instanceof Polygon) {
                 Polygon poly = (Polygon) d;
                 for (Point p : poly.getPoints()) {
-                    if (vars.length == 2) {
-                        vars[0] = p.xyz.x;
-                        vars[1] = p.xyz.y;
-                    } else if (vars.length == 1) {
-                        vars[0] = p.xyz.x;
+// Safely inject coordinates only if the variable exists in the function
+                    if (xIdx != -1) {
+                        vars[xIdx] = p.xyz.x;
+                    }
+                    if (yIdx != -1) {
+                        vars[yIdx] = p.xyz.y;
                     }
                     p.xyz.z = (float) fce.applyScalar(vars);
                 }
@@ -358,7 +362,7 @@ public class GraphDisplay {
         } else {//plot3d(expr,resolution)
             try {
                 resolution = Integer.parseInt(expression.substring(commaIndex + 1, expression.lastIndexOf(")")).trim());
-                System.out.println("resolution = "+resolution);
+                System.out.println("resolution = " + resolution);
                 expression = expression.substring(0, expression.lastIndexOf(",")) + ")";
                 currentSurface = null;
             } catch (Exception e) {

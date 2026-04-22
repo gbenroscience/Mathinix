@@ -9,6 +9,7 @@ import com.github.gbenroscience.parser.Variable;
 import com.github.gbenroscience.parser.methods.Method;
 import com.github.gbenroscience.parser.turbo.tools.FastCompositeExpression;
 import com.github.gbenroscience.parser.turbo.tools.MatrixTurboEvaluator;
+import com.github.gbenroscience.parser.turbo.tools.ScalarTurboEvaluator;
 import com.github.gbenroscience.parser.turbo.tools.TurboEvaluatorFactory;
 import com.github.gbenroscience.util.FunctionManager;
 import com.github.gbenroscience.util.VariableManager;
@@ -229,13 +230,12 @@ public class App extends Application {
                     sb.append("Use `wipe-vars` to clear all stored variables\n");
                     sb.append("Use `wipe-var:varName` e.g. wipe-var:a1 to delete the specified variable e.g. a1\n");
                     sb.append("Use `wipe-func:funcName` e.g. wipe-func:f to delete the specified function e.g. f\n");
-                    
-                    
+
                     sb.append("Use `plot` or `plot2d` command to generate 2d plots e.g plot(y(x)=sin(x)) or plot2d(v(x)=cosh(x)) to generate a 2D plot... the 2D plotter is ParserNG's native plotter\n");
                     sb.append("Use `plot3d` command to generate 3d plots. e.g plot3d(cosh(x-2*y)) to generate a 3D plot....the 3D plotter is powered by `Jzy3d`\n");
                     sb.append("For power users, do: plot3d(expression, resolution)... e.g. plot3d(expression, 80).  `resolution` should be between 50 and 120 for modest PCs.\n "
                             + "This increases the detail of the graph, by using more points from the math engine, but the graph will be less responsive for higher resolution, so beware.");
-                    
+
                     cli.printOutput(sb.toString());
                     return;
                 }
@@ -370,15 +370,14 @@ public class App extends Application {
                 } else {
                     try {
                         FastCompositeExpression fce = null;
-                        if (mode == MODE_TURBO_ARR) {
-                            fce = TurboEvaluatorFactory.getCompiler(me, false).compile();
-                        } else if (mode == MODE_TURBO_WIDE) {
-                            fce = TurboEvaluatorFactory.getCompiler(me, true).compile();
-                        } else if (mode == MODE_TURBO_MATRIX) {
+                        if (mode == MODE_TURBO_MATRIX) {
                             fce = new MatrixTurboEvaluator(me).compile();
+                        } else {
+                            fce = new ScalarTurboEvaluator(me, mode==MODE_TURBO_WIDE).compile();//TurboEvaluatorFactory.getCompiler(me, mode == MODE_TURBO_WIDE).compile();
                         }
 
                         MathExpression.EvalResult soln = fce.apply(me.getExecutionFrame());
+                        System.out.println(soln);
                         cli.printOutput(soln.toString());
                         // TRIGGER THE LIVE UPDATE
                         refreshTables();

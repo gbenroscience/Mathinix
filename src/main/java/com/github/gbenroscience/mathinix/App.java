@@ -10,7 +10,6 @@ import com.github.gbenroscience.parser.methods.Method;
 import com.github.gbenroscience.parser.turbo.tools.FastCompositeExpression;
 import com.github.gbenroscience.parser.turbo.tools.MatrixTurboEvaluator;
 import com.github.gbenroscience.parser.turbo.tools.ScalarTurboEvaluator;
-import com.github.gbenroscience.parser.turbo.tools.TurboEvaluatorFactory;
 import com.github.gbenroscience.util.FunctionManager;
 import com.github.gbenroscience.util.VariableManager;
 import java.util.ArrayList;
@@ -368,12 +367,12 @@ public class App extends Application {
                     //  TRIGGER THE LIVE UPDATE
                     refreshTables();
                 } else {
+                    FastCompositeExpression fce = null;
                     try {
-                        FastCompositeExpression fce = null;
                         if (mode == MODE_TURBO_MATRIX) {
                             fce = new MatrixTurboEvaluator(me).compile();
                         } else {
-                            fce = new ScalarTurboEvaluator(me, mode==MODE_TURBO_WIDE).compile();//TurboEvaluatorFactory.getCompiler(me, mode == MODE_TURBO_WIDE).compile();
+                            fce = new ScalarTurboEvaluator(me, mode == MODE_TURBO_WIDE).compile();//TurboEvaluatorFactory.getCompiler(me, mode == MODE_TURBO_WIDE).compile();
                         }
 
                         MathExpression.EvalResult soln = fce.apply(me.getExecutionFrame());
@@ -382,6 +381,8 @@ public class App extends Application {
                         // TRIGGER THE LIVE UPDATE
                         refreshTables();
                     } catch (Throwable ex) {
+                        String logs = fce.checkErrorLogs();
+                        cli.printOutput(logs);
                         System.getLogger(App.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
                     }
                 }

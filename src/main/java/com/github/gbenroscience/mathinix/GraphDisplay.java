@@ -236,6 +236,12 @@ public class GraphDisplay {
                     return expr;
                 }
 
+                @Override
+                public String checkErrorLogs() {
+                    return "";
+                }
+                
+
             };
 
             final double[] vars = new double[expr.getRegistry().size()];
